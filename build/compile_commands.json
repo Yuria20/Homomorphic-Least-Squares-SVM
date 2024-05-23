@@ -1,0 +1,17 @@
+[
+{
+  "directory": "/home/user/paiclab_ckw/Hom-lssvm/build",
+  "command": "/usr/bin/g++   -g -o CMakeFiles/homsvp.dir/test2.cpp.o -c /home/user/paiclab_ckw/Hom-lssvm/test2.cpp",
+  "file": "/home/user/paiclab_ckw/Hom-lssvm/test2.cpp"
+},
+{
+  "directory": "/home/user/paiclab_ckw/Hom-lssvm/build",
+  "command": "/usr/bin/g++   -g -o CMakeFiles/homsvp.dir/poly.cpp.o -c /home/user/paiclab_ckw/Hom-lssvm/poly.cpp",
+  "file": "/home/user/paiclab_ckw/Hom-lssvm/poly.cpp"
+},
+{
+  "directory": "/home/user/paiclab_ckw/Hom-lssvm/build",
+  "command": "/usr/bin/g++   -g -o CMakeFiles/homsvp.dir/custom_eval.cpp.o -c /home/user/paiclab_ckw/Hom-lssvm/custom_eval.cpp",
+  "file": "/home/user/paiclab_ckw/Hom-lssvm/custom_eval.cpp"
+}
+]

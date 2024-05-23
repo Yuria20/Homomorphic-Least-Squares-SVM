@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Site BuildName="Linux-g++"
+	BuildStamp="20240521-0204-Experimental"
+	Name="server"
+	Generator="ctest-3.22.1"
+	CompilerName="/usr/bin/g++"
+	CompilerVersion="11.4.0"
+	OSName="Linux"
+	Hostname="server"
+	OSRelease="5.15.0-106-generic"
+	OSVersion="#116-Ubuntu SMP Wed Apr 17 09:17:56 UTC 2024"
+	OSPlatform="x86_64"
+	Is64Bits="1"
+	VendorString="GenuineIntel"
+	VendorID="Intel Corporation"
+	FamilyID="6"
+	ModelID="106"
+	ProcessorCacheSize="24576"
+	NumberOfLogicalCPU="64"
+	NumberOfPhysicalCPU="32"
+	TotalVirtualMemory="8191"
+	TotalPhysicalMemory="257566"
+	LogicalProcessorsPerPhysical="2"
+	ProcessorClockFrequency="1152.65"
+	>
+	<Testing>
+		<StartDateTime>May 21 07:49 UTC</StartDateTime>
+		<StartTestTime>1716277768</StartTestTime>
+		<TestList/>
+		<EndDateTime>May 21 07:49 UTC</EndDateTime>
+		<EndTestTime>1716277768</EndTestTime>
+		<ElapsedMinutes>0</ElapsedMinutes>
+	</Testing>
+</Site>
