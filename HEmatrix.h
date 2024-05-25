@@ -15,7 +15,7 @@ public:
         this->slot = 1 << logslot;
     }
 
-    void setHEvec(Ciphertext* &ct, long dim) {
+    void setHEvec(Ciphertext* ct, long dim) {
         this->dim = dim;
         if(dim < slot) {
             this->ct = ct;
@@ -36,6 +36,8 @@ public:
     vector<Ciphertext*> mat;
     long matsize;
 
+    HEmatrix() {};
+
     HEmatrix(Context &context) {
         this->context = context;
         this->logslot = getLogFullSlots(context);
@@ -43,6 +45,7 @@ public:
     };
 
     void setHEmatrix(vector<Ciphertext*> &ctxts, long size) {
+        
         matsize = size;
         if(size < slot) {
             mat.resize(size);

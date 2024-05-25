@@ -7,12 +7,47 @@
 #include <random>
 #include "hom_lssvm.h"
 
+void GenRandomData(vector<vector<double>> &x_train, vector<double> &y_train,long size,long dim) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dis(0.5,1.0);
+    std::uniform_real_distribution<double> dis2(0.0,0.5);
 
+    bool isprint = false;
 
+    cout << "gen random training data..." << '\n';
+    for(int i=0; i<size; ++i) {
+        for(int j=0; j<dim; ++j) {
+            if((i)%2) {
+                x_train[i][j] = dis(gen);
+                y_train[i] = 1.0;
+            }
+            else {
+                x_train[i][j] = dis2(gen);
+                y_train[i] = -1.0;
+            }
+        }
+    }
 
+    if(isprint) {
+        cout << "X_train:\n";
+        for(int i=0; i<size; ++i) {
+            for(int j=0; j<dim; ++j) {
+                cout << x_train[i][j] << " ";
+            }
+            cout << '\n';
+        }
+        cout << "Y_train:\n";
+        for(int i=0; i<size; ++i){
+            cout << y_train[i] << " ";
+        }
+        cout << '\n';
+    }
+
+   
+}
 
 int main() {
-
 
     // Generate pre-determined Context where FVa
     HEaaN::ParameterPreset params = HEaaN::ParameterPreset::FVa;
@@ -43,83 +78,84 @@ int main() {
     //HomEvaluator eval(context,keygen.getKeyPack());
     KeyPack keys = keygen.getKeyPack();
     CustomEvaluator eval(context,keygen.getKeyPack());
+    eval.set_exp(15);
 
     EnDecoder Edcd(context);
     Encryptor enc(context);
     Decryptor dec(context);
     Bootstrapper btstr(eval);
+    eval.btstr = &btstr;
+    
 
+    /* Homomorphic matrix-vector multiplication */ 
 
+    cout << "Homomorphic Least Square SVM test!\n";
+    long dim,size; 
+    dim = size = 1000;
+    //cout << "input dim: "; //cin >> dim;
+    //cout << "input size: "; //cin >> size;
 
+    vector<vector<double>> x_train(size,vector<double>(dim,0));
+    vector<double> y_train(size,0);
 
-    // Homomorphic matrix-vector multiplication
-    cout << "Homomorphic matrix-vector multiplication!\n";
-    long dim; 
-    cout << "input dim: ";
-    cin >> dim;
-    long size; 
-    cout << "input size: ";
-    cin >> size;
+    GenRandomData(x_train,y_train,size,dim);
 
-    // plain matrix init
-    cout << "plain matrix!\n";
-    vector<vector<double>> matt(size,vector<double>(dim));
+    cout << "Encrypt matrix...\n";
+    vector<Ciphertext*> X_(size);
     for(int i=0; i<size; ++i) {
-        for(int j=0; j<dim; ++j) {
-            matt[i][j] = double(i*j-i);
-            cout << matt[i][j] << " ";
-        }
-        cout << '\n';
-    }
-    cout << '\n';
-
-    // plain vector init
-    cout << "plain vector init!\n";
-    vector<double> vec(size);
-    for(int i=0; i<size; ++i) {
-        cout << i << " ";
-        vec[i] = (double)i;
-    }
-    cout << '\n';
-
-    // Encrypt matrix
-    cout << "Encrypt matrix!\n";
-    vector<Ciphertext*> rows(size);
-    for(int i=0; i<size; ++i) {
-        rows[i] = new Ciphertext(context);
+        X_[i] = new Ciphertext(context);
     }
     
     for(int i=0; i<size; ++i) {
         Message msg(logslot,0.0);
         for(int j=0; j<dim; ++j) {
-            msg[j] = matt[j][(i+j)%dim];
-            //printf("(%d,%d): ",j,(i+j)%size);
-            //cout << msg[j].real() << " ";
+            msg[j] = x_train[i][j];
         }
-        //cout << '\n';
-        enc.encrypt(msg,sk,*rows[i]);
+        enc.encrypt(msg,sk,*X_[i]);
     }
 
-    HEmatrix A(context); 
-    A.setHEmatrix(rows,size);
-
-    // Encrypt vector
-    cout << "Encrypt vector!\n";
-    Ciphertext* v = new Ciphertext(context);
+    cout << "Encrypt vector...\n";
+    Ciphertext* Y_ = new Ciphertext(context);
     Message msg(logslot,0.0);
-
     for(int i=0; i<size; ++i) {
-        msg[i] = vec[i];
+        msg[i] = y_train[i];
+    }
+    enc.encrypt(msg,sk,*Y_);
+    
+    /*debug*/
+    Ciphertext cc(context);
+    Message mm(logslot);
+
+    lssvm plain_model(x_train,y_train,dim,size);
+    cout << "PlainText\n";
+    //plain_model.show_linear();
+
+    cout << "lssvm model init\n";
+    hom_lssvm model(context);
+    eval.set_lssvm(&model);
+    eval.init_lssvm(X_,Y_,dim,size);
+
+    cout << "gen_linear...\n";
+
+    auto start = std::chrono::high_resolution_clock::now();
+    eval.gen_linear();
+
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double, std::ratio<60>> duration = end - start;
+    std::cout << "(kernel setting)Execution time: " << duration.count() << " minutes" << std::endl;
+
+    eval.fit();
+
+    //debug 용도 코드
+    cout << "PlainText\n";
+    plain_model.show_weight();
+    cout << "CipherText\n";
+    dec.decrypt(*(eval.model->weight->ct),sk,mm);
+
+    for(int i=0; i<size+1; ++i) {
+        cout << mm[i].real() << " ";
     }
 
-    enc.encrypt(msg,sk,*v);
-
-    HEvec b(context);
-    b.setHEvec(v,size);
-
-    cout << "init lssvm!\n";
-    eval.init_lssvm(A,b,dim,size);
-
-    
     return 0;
 }

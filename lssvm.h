@@ -10,9 +10,9 @@ public:
     long sample_size;
     vector<vector<double>> x_train;
     vector<double> y_train;
-    double learning_rate = 0.01;
+    double learning_rate = 0.0001;
     double constraint = 0.1;
-    double gamma = 0.1;
+    double gamma = 1.0;
     vector<double> weight;
     vector<double> tilda_one;
     vector<vector<double>> linearMat; // (sample_size+1) x (sample_size+1)
@@ -53,7 +53,7 @@ public:
         // cout << 4;
         this->sample_size = sample_size;
         // cout << 5;
-
+        //gamma = 1.0;
         gen_linear(gamma);
 
         fit();
@@ -112,13 +112,38 @@ public:
 
     void show_linear()
     {
-
-        cout << "Linear matrix:\n";
+        cout << "Linear matrix(row-major):\n";
         for (int i = 0; i < sample_size + 1; ++i)
         {
             for (int j = 0; j < sample_size + 1; ++j)
             {
                 cout << linearMat[i][j] << " ";
+            }
+            cout << '\n';
+        }
+        cout << '\n';
+
+
+        cout << "Linear matrix(diagonal-major):\n";
+        for (int i = 0; i < sample_size + 1; ++i)
+        {
+            for (int j = 0; j < sample_size + 1; ++j)
+            {
+                cout << linearMat[j][(i+j)%(sample_size+1)] << " ";
+            }
+            cout << '\n';
+        }
+        cout << '\n';
+    }
+
+    void show_kernel()
+    {
+        cout << "kernel matrix:\n";
+        for (int i = 1; i < sample_size + 1; ++i)
+        {
+            for (int j = 1; j < sample_size + 1; ++j)
+            {
+                cout << linearMat[i][(i+j)%(sample_size+1)] << " ";
             }
             cout << '\n';
         }
@@ -162,13 +187,12 @@ public:
         }
         for (int i = 0; i < sample_size; ++i)
         {
-            linearMat[i + 1][i + 1] += 0.1;
+            linearMat[i + 1][i + 1] += (1.0/constraint);
         }
     }
 
     void gen_linear(double gamma)
     {
-
         linearMat.resize(sample_size + 1);
         for (int i = 0; i < sample_size + 1; ++i)
         {
@@ -180,16 +204,16 @@ public:
 
         for (int i = 1; i <= sample_size; ++i)
         {
-            linearMat[0][i] = -y_train[i - 1];
+            linearMat[0][i] = y_train[i - 1];
             linearMat[i][0] = y_train[i - 1];
         }
     }
 
     void fit()
     {
-
+        long epochs = 100;
         double current_loss = 100.0;
-        for (int i = 1; i <= 100000; ++i)
+        for (int i = 0; i < epochs; ++i)
         {
             vector<double> tmp = weight;
 
@@ -201,9 +225,9 @@ public:
 
             if (i % 1000 == 0)
             {
-                cout << i << "-th repeat-> ";
+                //cout << i << "-th repeat-> ";
                 validation();
-                cout << '\n';
+                //cout << '\n';
             }
         }
     }
@@ -223,7 +247,7 @@ public:
             var += tmp[i] * tmp[i];
         }
 
-        cout << "norm: " << var / double(sample_size + 1) << '\n';
+        //cout << "norm: " << var / double(sample_size + 1) << '\n';
         // cout << "loss: " << var/(sample_size+1) << '\n';
     }
 

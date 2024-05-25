@@ -109,53 +109,135 @@ void CustomEvaluator::mat_vec_Multiplication(HEmatrix& mat, HEvec& vec, HEvec& r
 
 void CustomEvaluator::gen_linear() {
 
+    gen_kernel();
+
+    Ciphertext y = *model->y_train->ct;
+
+    long first = 0;
+    long end = model->sample_size;
+
+    for(int i=1; i<model->sample_size+1; ++i) {
+        Ciphertext tmp(context);
+        Message onehot(logslot,0.0);
+        onehot[first] = 1.0;
+        mult(y,onehot,tmp);
+        leftRotate(tmp,first,tmp);
+        add(*(model->linearMat->mat[i]),tmp,*(model->linearMat->mat[i]));
+
+        Ciphertext tmp2(context);
+        Message onehot2(logslot,0.0);
+        onehot2[end-1] = 1.0;
+        mult(y,onehot2,tmp2);
+        rightRotate(tmp2,1,tmp2);
+        add(*(model->linearMat->mat[i]),tmp2,*(model->linearMat->mat[i]));
+
+        first++;
+        end--;
+    }
 }
 
 void CustomEvaluator::gen_kernel(){
+    
+    double per = 0.0;
+    double num = (model->sample_size)*(model->sample_size);
+    double delta = 1.0/num;
+    auto start =std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
 
-    for(int i=0; i<model.sample_size; ++i) {
-        for(int j=0; j<model.sample_size; ++j) {
+    for(int i=0; i<model->sample_size; ++i) {
+        for(int j=0; j<model->sample_size; ++j) {
+            start =std::chrono::high_resolution_clock::now();
+
             Ciphertext tmp(context);
-            sub(*((*model.x_train).mat[i]),*((*model.x_train).mat[j]),tmp);
+            sub(*(model->x_train->mat[i]),*(model->x_train->mat[j]),tmp);
             square(tmp,tmp);
 
             Message msg(logslot,0.0);
-            for(int idx = 0; idx<model.feature_dim; ++idx) {
-                msg[i] = 1.0;
+            for(int idx = 0; idx<model->feature_dim; ++idx) {
+                msg[idx] = 1.0;
             }
 
             mult(tmp,msg,tmp);
 
             trace(tmp,tmp);
 
+            negate(tmp,tmp);
+
+            //multiplay Hyper Parameter gamma
+            mult(tmp,model->gamma,tmp);
+
             Hom_exp(tmp,tmp);
 
             Message onehot(logslot,0.0);
-            onehot[i] = 0.0;
+            onehot[i] = 1.0;
 
             mult(tmp,onehot,tmp);
-
-            mult(tmp,*((*model.y_train).ct),tmp);
+            
+            mult(tmp,*(model->y_train->ct),tmp);
 
             Ciphertext Y(context);
-            leftRotate(*((*model.y_train).ct),j,Y);
+            leftRotate(*(model->y_train->ct),j,Y);
             rightRotate(Y,i,Y);
 
             mult(tmp,Y,tmp);
+            
+            rightRotate(tmp,1,tmp);
 
-            long idx = (i-j>0)?(model.sample_size-(i-j)):j-i;
-            idx = idx%model.sample_size;
+            long idx = (i-j>0)?(model->sample_size+1-(i-j)):j-i;
+            idx = idx%(model->sample_size+1);
+            add(*(model->linearMat->mat[idx]),tmp,*(model->linearMat->mat[idx]));
 
-            add( *((*model.linearMat).mat[idx]),tmp, *((*model.linearMat).mat[idx]));
+            end = std::chrono::high_resolution_clock::now();
+            num-=1.0;
+            std::chrono::duration<double> duration = end - start;
+
+            per+=delta;
+            printf("kernel matrix... [%0.2f %%]\t Estimated remaining time:%f minutes\n",per*100, duration*60*num);
         }
-
-        Message I(logslot,1.0/model.constraint);
-        add(*((*model.linearMat).mat[0]),I, *((*model.linearMat).mat[0]));
     }
+
+    Message I(logslot,1.0/model->constraint);
+    I[0] = 0.0;
+    add(*(model->linearMat->mat[0]),I,*(model->linearMat->mat[0]));
+
+    cout << "kernel matrx done\n";
 }
 
-void fit(double alpha) {
+void CustomEvaluator::fit() {
+    long epochs = 100;
 
+    HEvec prev(context);
+    long size = model->sample_size+1;
+
+    auto start =std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+
+    for(int i=0; i<epochs; ++i) {
+        start = std::chrono::high_resolution_clock::now();
+
+        Ciphertext tmp(*model->weight->ct);
+        prev.setHEvec(&tmp, size);
+
+        mat_vec_Multiplication(*model->linearMat,*model->weight,*model->weight);
+
+        sub(*model->weight->ct,*model->tilda_one->ct,*model->weight->ct);
+
+        mat_vec_Multiplication(*model->linearMat,*model->weight,*model->weight);
+
+        mult(*model->weight->ct,model->learning_rate,*model->weight->ct);
+
+        sub(*prev.ct,*model->weight->ct,*model->weight->ct);
+
+        //cout << (*model->weight->ct).getLevel();    
+        if((*model->weight->ct).getLevel()<7)
+            btstr->bootstrapExtended(*model->weight->ct,*model->weight->ct);   
+
+
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = end - start;
+        std::cout << "(unit epochs)Execution time: " << duration.count() << " seconds" << std::endl;
+    }
+    
 }
 
 

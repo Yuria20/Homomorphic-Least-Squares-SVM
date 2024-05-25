@@ -11,7 +11,8 @@ public:
     long logslot;
     long slot;
     Ciphertext* zero;
-    hom_lssvm model;
+    hom_lssvm* model;
+    Bootstrapper* btstr;
 
     /* Only Debugging */
     //vector<Ciphertext*> ctheap;
@@ -42,48 +43,44 @@ public:
     void mat_vec_Multiplication(HEmatrix& mat, HEvec& vec, HEvec& rtn);
 
     // lssvm operation
-    void init_lssvm(HEmatrix& train_x, HEvec& train_y,long feature_dim, long sample_size) {
-        cout << "fuck\n";
+    void set_lssvm(hom_lssvm* model) {
+        this->model = model;
+    }
+
+    void init_lssvm(vector<Ciphertext*>& train_x, Ciphertext*& train_y,long feature_dim, long sample_size) {
         
-        (*model.x_train).mat.resize(sample_size);
+        model->x_train->setHEmatrix(train_x,sample_size);
+        model->y_train->setHEvec(train_y,sample_size);
 
-        cout << "fuck\n";
-        
-        for(int i=0; i<sample_size; ++i) {
-            (*model.x_train).mat[i] = new Ciphertext(context);
-        }
-
-        (*model.y_train).ct = new Ciphertext(context);
-
-
-        *model.x_train = train_x;
-        *model.y_train = train_y;
-
-        model.feature_dim = feature_dim;
-        model.sample_size = sample_size;
+        model->feature_dim = feature_dim;
+        model->sample_size = sample_size;
 
         
         // initial b = (0.1)
-        Ciphertext b(*zero);
+        Ciphertext * b = new Ciphertext(*zero);
         Message msg(logslot,0.1);
-        mult(b,msg,b);
-        *((*model.weight).ct) = b;
-
+        add(*b,msg,*b);
+        model->weight->setHEvec(b,sample_size+1);
+    
         // tilda one init
-        Ciphertext one(*zero);
+        Ciphertext* one = new Ciphertext(*zero);
         Message msg2(logslot,1.0);
         msg2[0] = 0.0;
-        mult(one,msg2,one);
-        *((*model.tilda_one).ct) = one;
+        add(*one,msg2,*one);
+        model->tilda_one->setHEvec(one,sample_size+1);
 
-        ((*model.linearMat).mat).resize(sample_size+1);
+        vector<Ciphertext*> rows(sample_size+1);
         for(int i=0; i<sample_size+1; ++i) {
-            (*model.linearMat).mat[i] = new Ciphertext(context);
+            rows[i] = new Ciphertext(*zero);
         }
+
+        model->linearMat->setHEmatrix(rows,sample_size+1);
+    
     }
 
     void gen_linear();
     void gen_kernel();
+    void fit();
 
 private:
     Poly exp;
